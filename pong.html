@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Pong</title>
+    <!-- Basic styling, centering the canvas -->
+	<style>
+        body{
+            background-image: url('jGNTLTN.jpg');
+        }
+        div {
+            border: 5px solid black;
+            background-color: #ffffe0;
+            width:235px;
+            height:295px;
+            border-radius: 7px;
+            position:relative;
+            left:100px;
+            top: 100px;
+        }
+        
+        div h2{
+            font-family:'Rockwell Extra Bold';
+            text-decoration:underline;
+            text-align:center;
+        }
+        div h4{
+            font-family:'Copperplate';
+            text-decoration:underline;
+            font-weight: bold; 
+            text-indent: 30px;
+        }
+        div p{
+            font-family:'Copperplate';
+            text-indent: 30px;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            margin-left:400px;
+            top: 100px;
+            bottom: 0;
+            left: 0;
+            right:0;
+        }
+	</style>
+    
+</head>
+<body>
+
+<script>
+
+var
+//Declaring Variables
+WIDTH  = 700,
+HEIGHT = 600,
+pi = Math.PI,
+UpArrow   = 87,
+DownArrow = 83,
+w = 38,
+s = 40,
+//Defining some game elements
+canvas,
+ctx,
+keystate,
+//Player1's paddle
+player = {
+	x: null,
+	y: null,
+	width:  20,
+	height: 100,
+    score: 0,
+	//Update function to update player's paddle movements
+	update: function() {
+		if (keystate[UpArrow]) this.y -= 7;
+		if (keystate[DownArrow]) this.y += 7;
+		// keep the paddle inside of the canvas
+		this.y = Math.max(Math.min(this.y, HEIGHT - this.height), 0);
+	},
+	//Draw function to draw the player's paddle onto the canvas
+	draw: function() {
+		ctx.fillRect(this.x, this.y, this.width, this.height);
+	}
+},
+//Player2's paddle
+player2 = {
+    x:null,
+    y:null,
+    width:20,
+    height:100,
+    score: 0,
+    //Update the position of the paddle depending on pressed keys
+    update:function(){
+        if(keystate[w]) this.y -= 7;
+        if(keystate[s]) this.y += 7;
+        //Keep the paddle to within our designated canvas.
+        this.y = Math.max(Math.min(this.y, HEIGHT - this.height), 0);
+    },
+    //Draw our player paddle onto the canvas
+    draw: function(){
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    
+    }
+},
+    
+score = {
+    player1: 0,
+    player2: 0,
+    x: 50,
+    y: 100,
+    
+    updatePlayer1:function(x){
+            this.player1 += 1;
+    },
+    
+    updatePlayer2:function(x){
+            this.player2 += 1;
+    },
+    
+    
+    draw:function(){
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText(this.player1, 8, 20);
+        ctx.fillText(this.player2, 680, 20)
+    }
+}
+
+//The Ball Object
+ball = {
+	x:   null,
+	y:   null,
+	vel: null,
+	side:  20,
+	speed: 12,
+	//Serves the ball towards the specified sid 
+    //side===1 for left or side===-1 for right for 
+	serve: function(side) {
+		// set the x and y position of the ball
+		var r = Math.random();
+		this.x = side===1 ? player.x+player.width : player2.x - this.side;
+		this.y = (HEIGHT - this.side)*r;
+		// calculate out-angle, higher/lower on the y-axis =>
+		// steeper angle
+		var phi = 0.1*pi*(1 - 2*r);
+		// set velocity direction and magnitude
+		this.vel = {
+			x: side*this.speed*Math.cos(phi),
+			y: this.speed*Math.sin(phi)
+		}
+	},
+	//Updates the ball position, and keeps it within our predefined canvas
+	update: function() {
+		// Update position with current velocity
+		this.x += this.vel.x;
+		this.y += this.vel.y;
+		// Check if out if the canvas in the y direction
+		if (0 > this.y || this.y+this.side > HEIGHT) {
+			// calculate and add the right offset, i.e. how far
+			// inside of the canvas the ball is
+			var offset = this.vel.y < 0 ? 0 - this.y : HEIGHT - (this.y+this.side);
+			this.y += 2*offset;
+			// mirror the y velocity
+			this.vel.y *= -1;
+		}
+		// Helper function to check intesection between two
+		// axis aligned bounding boxex (AABB)
+		var AABBIntersect = function(ax, ay, aw, ah, bx, by, bw, bh) {
+			return ax < bx+bw && ay < by+bh && bx < ax+aw && by < ay+ah;
+		};
+		// check againts target paddle to check collision in x
+		// direction
+		var pdle = this.vel.x < 0 ? player : player2;
+		if (AABBIntersect(pdle.x, pdle.y, pdle.width, pdle.height,
+				this.x, this.y, this.side, this.side)
+		) {	
+			// set the x position and calculate reflection angle
+			this.x = pdle===player ? player.x+player.width : player2.x - this.side;
+			var n = (this.y+this.side - pdle.y)/(pdle.height+this.side);
+			var phi = 0.25*pi*(2*n - 1); // pi/4 = 45
+			// calculate smash value and update velocity
+			var smash = Math.abs(phi) > 0.2*pi ? 1.5 : 1;
+			this.vel.x = smash*(pdle===player ? 1 : -1)*this.speed*Math.cos(phi);
+			this.vel.y = smash*this.speed*Math.sin(phi);
+		}
+		// reset the ball when ball outside of the canvas in the
+		// x direction
+		if (0 > this.x+this.side || this.x > WIDTH && this.x < 0) {
+            score.updatePlayer1();
+			this.serve(pdle===player ? 1 : -1);
+		}
+        else if(0 > this.x+this.side || this.x > WIDTH && this.x > 0){
+            score.updatePlayer2();
+			this.serve(pdle===player ? 1 : -1);
+        }
+	},
+	//Draws the pong to the canvas
+	draw: function() {
+		ctx.fillRect(this.x, this.y, this.side, this.side);
+	}
+};
+//Main function which starts our pong game!
+function main() {
+	// create, initiate and append game canvas
+	canvas = document.createElement("canvas");
+	canvas.width = WIDTH;
+	canvas.height = HEIGHT;
+	ctx = canvas.getContext("2d");
+	document.body.appendChild(canvas);
+	keystate = {};
+	// keep track of keyboard presses
+	document.addEventListener("keydown", function(evt) {
+		keystate[evt.keyCode] = true;
+	});
+	document.addEventListener("keyup", function(evt) {
+		delete keystate[evt.keyCode];
+	});
+	init(); // initiate game objects
+	// game loop function
+	var loop = function() {
+		update();
+		draw();
+		window.requestAnimationFrame(loop, canvas);
+	};
+	window.requestAnimationFrame(loop, canvas);
+}
+//Initiates our game object and serves the ball
+function init() {
+	player.x = player.width;
+	player.y = (HEIGHT - player.height)/2;
+	player2.x = WIDTH - (player.width + player2.width);
+	player2.y = (HEIGHT - player2.height)/2;
+	ball.serve(1);
+}
+//Updates all the game objects
+function update() {
+	ball.update();
+	player.update();
+    player2.update();
+	//ai.update();
+}
+//Clears the canvas and draws all the game objects and the net
+function draw() {
+	ctx.fillRect(0, 0, WIDTH, HEIGHT);
+	ctx.save();
+	ctx.fillStyle = "#fff";
+	ball.draw();
+	player.draw();
+    player2.draw();
+    score.draw();
+    
+	//Draws the net on our Canvas
+	var w = 4;
+	var x = (WIDTH - w)*0.5;
+	var y = 0;
+	var step = HEIGHT/20; // Number of Segments for the Net
+	while (y < HEIGHT) {
+		ctx.fillRect(x, y+step*0.25, w, step*0.5);
+		y += step;
+	}
+	ctx.restore();
+}
+//Starts and runs our game.
+main();
+</script>
+    <div id = "instructions">
+        <h2>How To Play</h2>
+        <h4>Player 1: </h4>
+        <p>Up: Up Arrow Key</p>
+        <p>Down: Down Arrow Key</p>
+        <h4>Player 2:</h4>
+        <p>Up: W Key</p>
+        <p>Down: S Key</p>
+        </div>
+</body>
+</html>
