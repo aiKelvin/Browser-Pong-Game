@@ -108,18 +108,17 @@ score = {
     player2: 0,
     x: 50,
     y: 100,
-    
+    //Update Player1's Score
     updatePlayer1:function(x){
             this.player1 += 1;
     },
-    
+    //Updates Player2's Score
     updatePlayer2:function(x){
             this.player2 += 1;
     },
-    
-    
+    //Draws our Scores on both sides of the Canvas
     draw:function(){
-        ctx.font = "16px Arial";
+        ctx.font = "16px Impact";
         ctx.fillStyle = "#0095DD";
         ctx.fillText(this.player1, 8, 20);
         ctx.fillText(this.player2, 680, 20)
